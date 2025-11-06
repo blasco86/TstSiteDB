@@ -1,0 +1,17 @@
+# Archivos ignorados por defecto
+/shelf/
+/workspace.xml
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+/copilot.data.migration.agent.xml
+/dataSources.xml
+/sqlDataSources.xml
+/copilot.data.migration.edit.xml
+/modules.xml
+/sqldialects.xml
+/copilot.data.migration.ask.xml
+/data_source_mapping.xml
+/TstSiteDB.iml
+/vcs.xml
+/copilot.data.migration.ask2agent.xml

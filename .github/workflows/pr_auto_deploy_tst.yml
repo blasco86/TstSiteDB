@@ -1,4 +1,4 @@
-name: Despliegue automatico en TST en PR
+name: TST - Despliegue automatico con PR
 
 on:
   pull_request:

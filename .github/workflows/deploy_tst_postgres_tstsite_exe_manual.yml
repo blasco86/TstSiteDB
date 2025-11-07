@@ -1,0 +1,42 @@
+name: Compile PostgreSQL Functions (TST Manual)
+
+on:
+  workflow_dispatch:  # 👈 solo se ejecuta manualmente
+
+jobs:
+  deploy-sql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tst branch
+        uses: actions/checkout@v4
+        with:
+          ref: tst   # 👈 siempre toma la rama tst
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Compile all SQL functions
+        env:
+          PGHOST: postgresql-tstsite.alwaysdata.net
+          PGUSER: ${{ secrets.DB_USER }}
+          PGPASSWORD: ${{ secrets.DB_PASS }}
+          PGDATABASE: ${{ secrets.DB_NAME }}
+        run: |
+          echo "Starting manual SQL compilation for branch tst..."
+          echo "Connecting to $PGDATABASE at $PGHOST"
+
+          shopt -s nullglob
+          FILES=(tstsite_db/tstsite_exe/*.sql)
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "⚠️ No SQL files found in tstsite_db/tstsite_exe/"
+            exit 1
+          fi
+
+          for file in "${FILES[@]}"; do
+            echo "Running $file..."
+            psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f "$file"
+          done
+
+          echo "✅ All SQL files compiled successfully."

@@ -1,0 +1,48 @@
+name: Despliegue manual TST
+
+on:
+  workflow_dispatch:   # 👈 permite ejecución manual desde la pestaña "Actions"
+
+jobs:
+  manual-deploy:
+    runs-on: ubuntu-latest
+    name: Deploy SQL Functions to TST Database
+
+    steps:
+      - name: Checkout tst branch
+        uses: actions/checkout@v4
+        with:
+          ref: tst   # 👈 siempre toma el código de la rama tst
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Compile all SQL files in tstsite_exe
+        env:
+          PGHOST: postgresql-tstsite.alwaysdata.net
+          PGUSER: ${{ secrets.DB_USER_TST }}
+          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+        run: |
+          echo "🔄 Starting manual deploy to TST database..."
+          BASE_DIR="tstsite_db/tstsite_exe"
+
+          if [ ! -d "$BASE_DIR" ]; then
+            echo "❌ Directory $BASE_DIR not found!"
+            exit 1
+          fi
+
+          shopt -s nullglob
+          FILES=($BASE_DIR/*.sql)
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "⚠️ No SQL files found in $BASE_DIR"
+            exit 1
+          fi
+
+          for file in "${FILES[@]}"; do
+            echo "➡️ Running: $file"
+            psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f "$file"
+          done
+
+          echo "✅ Manual deployment completed successfully in TST!"

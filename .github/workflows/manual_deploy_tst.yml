@@ -1,4 +1,4 @@
-name: [TST] Despliegue manual
+name: TST - Despliegue manual
 
 on:
   workflow_dispatch:   # permite ejecución manual desde la pestaña "Actions"

@@ -2,9 +2,9 @@ name: TST - Despliegue automático planificado
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # 07:00 hora España (06:00 UTC)
-    - cron: '0 18 * * *'  # 19:00 hora España (18:00 UTC)
-  workflow_dispatch:       # también permite ejecución manual
+    - cron: '0 6 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch:
 
 jobs:
   trigger-deploy:
@@ -14,3 +14,8 @@ jobs:
       db_user: ${{ secrets.DB_USER_TST }}
       db_pass: ${{ secrets.DB_PASS_TST }}
       db_name: ${{ secrets.DB_NAME_TST }}
+    secrets:  # <--- importante, permite pasar secrets al workflow llamado
+      DB_HOST_TST: ${{ secrets.DB_HOST_TST }}
+      DB_USER_TST: ${{ secrets.DB_USER_TST }}
+      DB_PASS_TST: ${{ secrets.DB_PASS_TST }}
+      DB_NAME_TST: ${{ secrets.DB_NAME_TST }}

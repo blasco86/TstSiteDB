@@ -1,8 +1,21 @@
 name: TST - Despliegue funciones/procedimientos
 
 on:
-  workflow_dispatch:  # 👉 Solo ejecución manual desde la pestaña "Actions"
-  workflow_call:      # 👈 Permite ser invocado desde otro workflow
+  workflow_dispatch:  # ejecución manual
+  workflow_call:      # permite ser invocado desde otro workflow
+    inputs:
+      db_host:
+        required: true
+        type: string
+      db_user:
+        required: true
+        type: string
+      db_pass:
+        required: true
+        type: string
+      db_name:
+        required: true
+        type: string
 
 jobs:
   manual-deploy:
@@ -13,37 +26,35 @@ jobs:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
         with:
-          ref: tst   # Siempre toma el código de la rama tst
+          ref: tst
 
       - name: ⚙️ Instalar cliente PostgreSQL
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      # 👇 NUEVO BLOQUE DE DEBUG para comprobar que los secrets llegan correctamente
-      - name: 🔍 Debug de secrets (solo prueba)
+      - name: 🔍 Debug de variables de conexión
         run: |
-          echo "Verificando secrets disponibles..."
-          echo "PGHOST: '${{ secrets.DB_HOST_TST }}'"
-          echo "PGUSER: '${{ secrets.DB_USER_TST }}'"
-          echo "PGPASSWORD: '${{ secrets.DB_PASS_TST }}'"
-          echo "PGDATABASE: '${{ secrets.DB_NAME_TST }}'"
+          echo "Verificando variables de conexión..."
+          echo "PGHOST: $PGHOST"
+          echo "PGUSER: $PGUSER"
+          echo "PGDATABASE: $PGDATABASE"
+        env:
+          PGHOST: ${{ inputs.db_host }}
+          PGUSER: ${{ inputs.db_user }}
+          PGPASSWORD: ${{ inputs.db_pass }}
+          PGDATABASE: ${{ inputs.db_name }}
 
       - name: 🚀 Compilar y validar funciones/procedimientos
         env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+          PGHOST: ${{ inputs.db_host }}
+          PGUSER: ${{ inputs.db_user }}
+          PGPASSWORD: ${{ inputs.db_pass }}
+          PGDATABASE: ${{ inputs.db_name }}
         run: |
           echo "🔄 Iniciando despliegue en la base de datos..."
-          echo "Verificando variables de conexión..."
-          echo "🔹 PGHOST: $PGHOST"
-          echo "🔹 PGUSER: $PGUSER"
-          echo "🔹 PGDATABASE: $PGDATABASE"
-
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
-            echo "❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio."
+            echo "❌ Faltan variables de conexión."
             exit 1
           fi
 
@@ -65,7 +76,7 @@ jobs:
           ERROR=0
           for file in "${FILES[@]}"; do
             echo "➡️ Compilando: $file"
-            if ! psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
+            if ! PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
               echo "❌ Error al compilar $file"
               ERROR=1
               break
@@ -73,7 +84,7 @@ jobs:
           done
 
           if [ $ERROR -ne 0 ]; then
-            echo "🚨 Despliegue fallido. Revisa el log anterior."
+            echo "🚨 Despliegue fallido."
             exit 1
           fi
 
@@ -81,18 +92,15 @@ jobs:
 
       - name: 🔁 Reiniciar conexiones activas tras el despliegue
         env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+          PGHOST: ${{ inputs.db_host }}
+          PGUSER: ${{ inputs.db_user }}
+          PGPASSWORD: ${{ inputs.db_pass }}
+          PGDATABASE: ${{ inputs.db_name }}
         run: |
-          echo "🔁 Cerrando conexiones activas en la base de datos..."
+          echo "🔁 Cerrando conexiones activas..."
           RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \
             "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();")
-          
-          echo "🔍 Se van a cerrar $RESULT conexiones activas (excepto la actual)."
-          
+          echo "🔍 Se van a cerrar $RESULT conexiones activas."
           psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();"
-          
           echo "✅ Conexiones cerradas correctamente."

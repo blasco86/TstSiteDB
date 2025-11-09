@@ -27,6 +27,10 @@ jobs:
           PGPASSWORD: ${{ secrets.DB_PASS_TST }}
           PGDATABASE: ${{ secrets.DB_NAME_TST }}
         run: |
+          echo "🔍 Verificando variables de conexión..."
+          echo "  🔹 PGHOST: $PGHOST"
+          echo "  🔹 PGUSER: $PGUSER"
+          echo "  🔹 PGDATABASE: $PGDATABASE"
 
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
             echo "❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio."

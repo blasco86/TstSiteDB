@@ -4,10 +4,10 @@ on:
   schedule:
     - cron: '0 6 * * *'   # 07:00 hora España (06:00 UTC)
     - cron: '0 18 * * *'  # 19:00 hora España (18:00 UTC)
-  workflow_dispatch:       # manual
+  workflow_dispatch:       # también permite ejecución manual
 
 jobs:
-  trigger-manual-deploy:
+  trigger-deploy:
     uses: ./.github/workflows/tst_deploy_func_proc.yml
     with:
       db_host: ${{ secrets.DB_HOST_TST }}

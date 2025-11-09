@@ -1,0 +1,63 @@
+name: TST - Despliegue automático funciones/procedimientos
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Ejecuta a las 07:00 hora de España (06:00 UTC)
+    - cron: '0 18 * * *'  # Ejecuta a las 19:00 hora de España (18:00 UTC)
+  workflow_dispatch:       # También permite ejecución manual si lo deseas
+
+jobs:
+  auto-deploy:
+    runs-on: ubuntu-latest
+    name: Despliegue automático TST
+
+    steps:
+      - name: 🧩 Descargar código de la rama tst
+        uses: actions/checkout@v4
+        with:
+          ref: tst
+
+      - name: ⚙️ Instalar cliente PostgreSQL
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: 🚀 Compilar y validar funciones/procedimientos
+        env:
+          PGHOST: ${{ secrets.DB_HOST_TST }}
+          PGUSER: ${{ secrets.DB_USER_TST }}
+          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+        run: |
+          echo "🔄 Iniciando despliegue automático en la base de datos..."
+          BASE_DIR="tstsite_db/tstsite_exe"
+
+          if [ ! -d "$BASE_DIR" ]; then
+            echo "❌ El directorio $BASE_DIR no existe."
+            exit 1
+          fi
+
+          shopt -s nullglob
+          FILES=($BASE_DIR/*.sql)
+
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "⚠️ No hay ficheros .sql en $BASE_DIR."
+            exit 1
+          fi
+
+          ERROR=0
+          for file in "${FILES[@]}"; do
+            echo "➡️ Compilando: $file"
+            if ! psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
+              echo "❌ Error al compilar $file"
+              ERROR=1
+              break
+            fi
+          done
+
+          if [ $ERROR -ne 0 ]; then
+            echo "🚨 Despliegue fallido. Revisa el log anterior."
+            exit 1
+          fi
+
+          echo "✅ Despliegue automático completado correctamente en TST."

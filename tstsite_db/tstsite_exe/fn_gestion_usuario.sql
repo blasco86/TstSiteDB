@@ -1,4 +1,4 @@
-create function tstsite_exe.fn_gestion_usuario(p_accion text, p_datos jsonb) returns jsonb
+create or replace function tstsite_exe.fn_gestion_usuario(p_accion text, p_datos jsonb) returns jsonb
     security definer
     SET search_path = tstsite, tstsite_exe
     language plpgsql

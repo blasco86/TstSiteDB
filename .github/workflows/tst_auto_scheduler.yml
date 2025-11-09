@@ -8,9 +8,17 @@ on:
 
 jobs:
   trigger-deploy:
-    uses: ./.github/workflows/tst_deploy_func_proc.yml
-    with:
-      db_host: ${{ secrets.DB_HOST_TST }}
-      db_user: ${{ secrets.DB_USER_TST }}
-      db_pass: ${{ secrets.DB_PASS_TST }}
-      db_name: ${{ secrets.DB_NAME_TST }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger TST deploy workflow
+        uses: peter-evans/workflow-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          workflow: tst_deploy_func_proc.yml
+          ref: main
+          inputs: |
+            db_host: ${{ secrets.DB_HOST_TST }}
+            db_user: ${{ secrets.DB_USER_TST }}
+            db_pass: ${{ secrets.DB_PASS_TST }}
+            db_name: ${{ secrets.DB_NAME_TST }}

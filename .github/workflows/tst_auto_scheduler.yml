@@ -4,21 +4,13 @@ on:
   schedule:
     - cron: '0 6 * * *'   # 07:00 hora España (06:00 UTC)
     - cron: '0 18 * * *'  # 19:00 hora España (18:00 UTC)
-  workflow_dispatch:       # permite ejecución manual
+  workflow_dispatch:       # ejecución manual
 
 jobs:
   trigger-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Llamar workflow de despliegue
-        uses: ./.github/workflows/tst_deploy_func_proc.yml
-        with:
-          db_host: ${{ env.DB_HOST_TST }}
-          db_user: ${{ env.DB_USER_TST }}
-          db_pass: ${{ env.DB_PASS_TST }}
-          db_name: ${{ env.DB_NAME_TST }}
-        env:
-          DB_HOST_TST: ${{ secrets.DB_HOST_TST }}
-          DB_USER_TST: ${{ secrets.DB_USER_TST }}
-          DB_PASS_TST: ${{ secrets.DB_PASS_TST }}
-          DB_NAME_TST: ${{ secrets.DB_NAME_TST }}
+    uses: ./.github/workflows/tst_deploy_func_proc.yml
+    with:
+      db_host: ${{ secrets.DB_HOST_TST }}
+      db_user: ${{ secrets.DB_USER_TST }}
+      db_pass: ${{ secrets.DB_PASS_TST }}
+      db_name: ${{ secrets.DB_NAME_TST }}

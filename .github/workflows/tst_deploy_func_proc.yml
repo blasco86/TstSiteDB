@@ -39,7 +39,6 @@ jobs:
           PGDATABASE: ${{ inputs.db_name }}
         run: |
           echo "🔄 Iniciando despliegue en la base de datos..."
-
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
             echo "❌ Faltan variables de conexión."
             exit 1

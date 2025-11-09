@@ -18,10 +18,8 @@ on:
         type: string
 
 jobs:
-  manual-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    name: Despliegue TST
-
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
@@ -33,7 +31,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: 🚀 Compilar y validar funciones/procedimientos
+      - name: 🚀 Desplegar funciones/procedimientos
         env:
           PGHOST: ${{ inputs.db_host }}
           PGUSER: ${{ inputs.db_user }}
@@ -41,13 +39,13 @@ jobs:
           PGDATABASE: ${{ inputs.db_name }}
         run: |
           echo "🔄 Iniciando despliegue en la base de datos..."
+
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
             echo "❌ Faltan variables de conexión."
             exit 1
           fi
 
           BASE_DIR="tstsite_db/tstsite_exe"
-
           if [ ! -d "$BASE_DIR" ]; then
             echo "❌ El directorio $BASE_DIR no existe."
             exit 1
@@ -55,7 +53,6 @@ jobs:
 
           shopt -s nullglob
           FILES=($BASE_DIR/*.sql)
-
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "⚠️ No hay ficheros .sql en $BASE_DIR."
             exit 1
@@ -78,7 +75,7 @@ jobs:
 
           echo "✅ Despliegue completado correctamente en TST."
 
-      - name: 🔁 Reiniciar conexiones activas tras el despliegue
+      - name: 🔁 Reiniciar conexiones activas
         env:
           PGHOST: ${{ inputs.db_host }}
           PGUSER: ${{ inputs.db_user }}

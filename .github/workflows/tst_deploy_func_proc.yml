@@ -1,49 +1,51 @@
+# 📄 .github/workflows/tst-deploy.yml
+# Despliega funciones y procedimientos en la BD TST (Alwaysdata)
+# Puede ejecutarse manualmente o ser invocado desde otro workflow.
+
 name: TST - Despliegue funciones/procedimientos
 
 on:
-  workflow_dispatch:
-  workflow_call:
+  workflow_dispatch:  # 👉 Permite ejecución manual desde la pestaña "Actions"
+  workflow_call:      # 👈 Permite ser invocado desde otro workflow (por horas, por ejemplo)
 
 jobs:
-  manual-deploy:
+  deploy-tst:
     runs-on: ubuntu-latest
     name: Despliegue TST
+
+    # 🔐 Variables de entorno para conexión a Alwaysdata
+    env:
+      PGHOST: ${{ secrets.DB_HOST_TST }}
+      PGUSER: ${{ secrets.DB_USER_TST }}
+      PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+      PGDATABASE: ${{ secrets.DB_NAME_TST }}
 
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
         with:
-          ref: tst
+          ref: tst   # Siempre toma el código de la rama de test
 
       - name: ⚙️ Instalar cliente PostgreSQL
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: 🚀 Compilar y validar funciones/procedimientos
-        env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+      - name: 🔍 Verificar variables de conexión
         run: |
           echo "🔍 Verificando variables de conexión..."
-          echo "  🔹 PGHOST: $PGHOST"
-          echo "  🔹 PGUSER: $PGUSER"
-          echo "  🔹 PGDATABASE: $PGDATABASE"
-
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
             echo "❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio."
             exit 1
           fi
+          echo "  🔹 PGHOST: $PGHOST"
+          echo "  🔹 PGUSER: $PGUSER"
+          echo "  🔹 PGDATABASE: $PGDATABASE"
+          echo "✅ Variables de conexión cargadas correctamente."
 
-          echo "🔄 Probando conexión con la base de datos..."
-          if ! psql "host=$PGHOST user=$PGUSER password=$PGPASSWORD dbname=$PGDATABASE" -c "SELECT version();" > /dev/null; then
-            echo "❌ No se pudo conectar al servidor PostgreSQL ($PGHOST)"
-            exit 1
-          fi
-          echo "✅ Conexión exitosa con la base de datos."
-
+      - name: 🚀 Compilar y validar funciones/procedimientos
+        run: |
+          echo "🔄 Iniciando despliegue en la base de datos..."
           BASE_DIR="tstsite_db/tstsite_exe"
 
           if [ ! -d "$BASE_DIR" ]; then
@@ -62,7 +64,7 @@ jobs:
           ERROR=0
           for file in "${FILES[@]}"; do
             echo "➡️ Compilando: $file"
-            if ! psql "host=$PGHOST user=$PGUSER password=$PGPASSWORD dbname=$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
+            if ! psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
               echo "❌ Error al compilar $file"
               ERROR=1
               break
@@ -77,17 +79,14 @@ jobs:
           echo "✅ Despliegue completado correctamente en TST."
 
       - name: 🔁 Reiniciar conexiones activas tras el despliegue
-        env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
         run: |
           echo "🔁 Cerrando conexiones activas en la base de datos..."
-          psql "host=$PGHOST user=$PGUSER password=$PGPASSWORD dbname=$PGDATABASE" -c \
-            "SELECT pg_terminate_backend(pid)
-             FROM pg_stat_activity
-             WHERE datname = current_database()
-             AND pid <> pg_backend_pid();"
+          RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();")
+          
+          echo "🔍 Se van a cerrar $RESULT conexiones activas (excepto la actual)."
+          
+          psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();"
           
           echo "✅ Conexiones cerradas correctamente."

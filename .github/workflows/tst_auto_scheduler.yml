@@ -2,9 +2,9 @@ name: TST - Despliegue automático planificado
 
 on:
   schedule:
-    - cron: '0 6 * * *'
-    - cron: '0 18 * * *'
-  workflow_dispatch:
+    - cron: '0 6 * * *'   # 07:00 hora España (06:00 UTC)
+    - cron: '0 18 * * *'  # 19:00 hora España (18:00 UTC)
+  workflow_dispatch:       # permite ejecución manual
 
 jobs:
   trigger-deploy:

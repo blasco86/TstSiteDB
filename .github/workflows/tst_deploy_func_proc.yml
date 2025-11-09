@@ -1,8 +1,8 @@
 name: TST - Despliegue funciones/procedimientos
 
 on:
-  workflow_dispatch:  # ejecución manual
-  workflow_call:      # permite ser invocado desde otro workflow
+  workflow_dispatch:   # ejecución manual
+  workflow_call:       # permite ser invocado desde otro workflow
     inputs:
       db_host:
         required: true
@@ -34,16 +34,16 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: 🔍 Debug de variables de conexión
-        run: |
-          echo "Verificando variables de conexión..."
-          echo "PGHOST: $PGHOST"
-          echo "PGUSER: $PGUSER"
-          echo "PGDATABASE: $PGDATABASE"
         env:
           PGHOST: ${{ inputs.db_host }}
           PGUSER: ${{ inputs.db_user }}
           PGPASSWORD: ${{ inputs.db_pass }}
           PGDATABASE: ${{ inputs.db_name }}
+        run: |
+          echo "Verificando variables de conexión..."
+          echo "PGHOST: $PGHOST"
+          echo "PGUSER: $PGUSER"
+          echo "PGDATABASE: $PGDATABASE"
 
       - name: 🚀 Compilar y validar funciones/procedimientos
         env:

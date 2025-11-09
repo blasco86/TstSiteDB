@@ -8,4 +8,4 @@ on:
 
 jobs:
   trigger-manual-deploy:
-    uses: ./.github/workflows/tst_manual_deploy.yml   # 👈 llama al otro workflow
+    uses: ./.github/workflows/tst_deploy_func_proc.yml   # 👈 llama al otro workflow

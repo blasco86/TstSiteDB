@@ -33,18 +33,6 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: 🔍 Debug de variables de conexión
-        env:
-          PGHOST: ${{ inputs.db_host }}
-          PGUSER: ${{ inputs.db_user }}
-          PGPASSWORD: ${{ inputs.db_pass }}
-          PGDATABASE: ${{ inputs.db_name }}
-        run: |
-          echo "Verificando variables de conexión..."
-          echo "PGHOST: $PGHOST"
-          echo "PGUSER: $PGUSER"
-          echo "PGDATABASE: $PGDATABASE"
-
       - name: 🚀 Compilar y validar funciones/procedimientos
         env:
           PGHOST: ${{ inputs.db_host }}

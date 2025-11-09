@@ -1,56 +1,52 @@
-# 📄 .github/workflows/tst-deploy.yml
-# Despliega funciones y procedimientos en la BD TST (Alwaysdata)
-# Puede ejecutarse manualmente o ser invocado desde otro workflow.
-
 name: TST - Despliegue funciones/procedimientos
 
 on:
-  workflow_dispatch:  # 👉 Permite ejecución manual desde la pestaña "Actions"
-  workflow_call:      # 👈 Permite ser invocado desde otro workflow (por horas, por ejemplo)
+  workflow_dispatch:  # 👉 Solo ejecución manual desde la pestaña "Actions"
+  workflow_call:      # 👈 Permite ser invocado desde otro workflow
 
 jobs:
-  deploy-tst:
+  manual-deploy:
     runs-on: ubuntu-latest
     name: Despliegue TST
-
-    # 🔐 Variables de entorno para conexión a Alwaysdata
-    env:
-      PGHOST: ${{ secrets.DB_HOST_TST }}
-      PGUSER: ${{ secrets.DB_USER_TST }}
-      PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-      PGDATABASE: ${{ secrets.DB_NAME_TST }}
-
-      Run echo "🔍 Verificando variables de conexión..."
-      🔍 Verificando variables de conexión...
-      ❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio.
-      Error: Process completed with exit code 1.
 
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
         with:
-          ref: tst   # Siempre toma el código de la rama de test
+          ref: tst   # Siempre toma el código de la rama tst
 
       - name: ⚙️ Instalar cliente PostgreSQL
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: 🔍 Verificar variables de conexión
+      # 👇 NUEVO BLOQUE DE DEBUG para comprobar que los secrets llegan correctamente
+      - name: 🔍 Debug de secrets (solo prueba)
         run: |
-          echo "🔍 Verificando variables de conexión..."
+          echo "Verificando secrets disponibles..."
+          echo "PGHOST: '${{ secrets.DB_HOST_TST }}'"
+          echo "PGUSER: '${{ secrets.DB_USER_TST }}'"
+          echo "PGPASSWORD: '${{ secrets.DB_PASS_TST }}'"
+          echo "PGDATABASE: '${{ secrets.DB_NAME_TST }}'"
+
+      - name: 🚀 Compilar y validar funciones/procedimientos
+        env:
+          PGHOST: ${{ secrets.DB_HOST_TST }}
+          PGUSER: ${{ secrets.DB_USER_TST }}
+          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+        run: |
+          echo "🔄 Iniciando despliegue en la base de datos..."
+          echo "Verificando variables de conexión..."
+          echo "🔹 PGHOST: $PGHOST"
+          echo "🔹 PGUSER: $PGUSER"
+          echo "🔹 PGDATABASE: $PGDATABASE"
+
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
             echo "❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio."
             exit 1
           fi
-          echo "  🔹 PGHOST: $PGHOST"
-          echo "  🔹 PGUSER: $PGUSER"
-          echo "  🔹 PGDATABASE: $PGDATABASE"
-          echo "✅ Variables de conexión cargadas correctamente."
 
-      - name: 🚀 Compilar y validar funciones/procedimientos
-        run: |
-          echo "🔄 Iniciando despliegue en la base de datos..."
           BASE_DIR="tstsite_db/tstsite_exe"
 
           if [ ! -d "$BASE_DIR" ]; then
@@ -84,6 +80,11 @@ jobs:
           echo "✅ Despliegue completado correctamente en TST."
 
       - name: 🔁 Reiniciar conexiones activas tras el despliegue
+        env:
+          PGHOST: ${{ secrets.DB_HOST_TST }}
+          PGUSER: ${{ secrets.DB_USER_TST }}
+          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+          PGDATABASE: ${{ secrets.DB_NAME_TST }}
         run: |
           echo "🔁 Cerrando conexiones activas en la base de datos..."
           RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \

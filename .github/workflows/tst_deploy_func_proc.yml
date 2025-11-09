@@ -1,25 +1,16 @@
 name: TST - Despliegue funciones/procedimientos
 
 on:
-  workflow_dispatch:   # ejecución manual
-  workflow_call:       # permite ser invocado desde otro workflow
-    inputs:
-      db_host:
-        required: true
-        type: string
-      db_user:
-        required: true
-        type: string
-      db_pass:
-        required: true
-        type: string
-      db_name:
-        required: true
-        type: string
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      PGHOST: ${{ secrets.DB_HOST_TST }}
+      PGUSER: ${{ secrets.DB_USER_TST }}
+      PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+      PGDATABASE: ${{ secrets.DB_NAME_TST }}
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
@@ -32,11 +23,6 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: 🚀 Desplegar funciones/procedimientos
-        env:
-          PGHOST: ${{ inputs.db_host }}
-          PGUSER: ${{ inputs.db_user }}
-          PGPASSWORD: ${{ inputs.db_pass }}
-          PGDATABASE: ${{ inputs.db_name }}
         run: |
           echo "🔄 Iniciando despliegue en la base de datos..."
           if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
@@ -75,11 +61,6 @@ jobs:
           echo "✅ Despliegue completado correctamente en TST."
 
       - name: 🔁 Reiniciar conexiones activas
-        env:
-          PGHOST: ${{ inputs.db_host }}
-          PGUSER: ${{ inputs.db_user }}
-          PGPASSWORD: ${{ inputs.db_pass }}
-          PGDATABASE: ${{ inputs.db_name }}
         run: |
           echo "🔁 Cerrando conexiones activas..."
           RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \

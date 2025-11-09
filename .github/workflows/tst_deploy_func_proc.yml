@@ -20,6 +20,11 @@ jobs:
       PGPASSWORD: ${{ secrets.DB_PASS_TST }}
       PGDATABASE: ${{ secrets.DB_NAME_TST }}
 
+      Run echo "🔍 Verificando variables de conexión..."
+      🔍 Verificando variables de conexión...
+      ❌ Faltan variables de conexión. Revisa los 'secrets' del repositorio.
+      Error: Process completed with exit code 1.
+
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4

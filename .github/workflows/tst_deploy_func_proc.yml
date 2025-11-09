@@ -1,21 +1,19 @@
-name: TST - Despliegue automático funciones/procedimientos
+name: TST - Despliegue funciones/procedimientos
 
 on:
-  schedule:
-    - cron: '0 6 * * *'   # Ejecuta a las 07:00 hora de España (06:00 UTC)
-    - cron: '0 18 * * *'  # Ejecuta a las 19:00 hora de España (18:00 UTC)
-  workflow_dispatch:       # También permite ejecución manual si lo deseas
+  workflow_dispatch:  # 👉 Solo ejecución manual desde la pestaña "Actions"
+  workflow_call:      # 👈 permite ser invocado desde otro workflow
 
 jobs:
-  auto-deploy:
+  manual-deploy:
     runs-on: ubuntu-latest
-    name: Despliegue automático TST
+    name: Despliegue TST
 
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
         with:
-          ref: tst
+          ref: tst   # Siempre toma el código de la rama tst
 
       - name: ⚙️ Instalar cliente PostgreSQL
         run: |
@@ -29,7 +27,7 @@ jobs:
           PGPASSWORD: ${{ secrets.DB_PASS_TST }}
           PGDATABASE: ${{ secrets.DB_NAME_TST }}
         run: |
-          echo "🔄 Iniciando despliegue automático en la base de datos..."
+          echo "🔄 Iniciando despliegue en la base de datos..."
           BASE_DIR="tstsite_db/tstsite_exe"
 
           if [ ! -d "$BASE_DIR" ]; then
@@ -60,4 +58,22 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Despliegue automático completado correctamente en TST."
+          echo "✅ Despliegue completado correctamente en TST."
+
+      - name: 🔁 Reiniciar conexiones activas tras el despliegue
+        env:
+          PGHOST: ${{ secrets.DB_HOST_TST }}
+          PGUSER: ${{ secrets.DB_USER_TST }}
+          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+        run: |
+          echo "🔁 Cerrando conexiones activas en la base de datos..."
+          RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();")
+          
+          echo "🔍 Se van a cerrar $RESULT conexiones activas (excepto la actual)."
+          
+          psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();"
+          
+          echo "✅ Conexiones cerradas correctamente."

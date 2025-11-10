@@ -1,35 +1,39 @@
-name: TST - Despliegue funciones/procedimientos
+name: TST - Despliegue automático de funciones/procedimientos planificado
 
 on:
-  workflow_dispatch:  # 👉 Solo ejecución manual desde la pestaña "Actions"
-  workflow_call:      # 👈 permite ser invocado desde otro workflow
+  schedule:
+    - cron: '0 6 * * *'   # 07:00 hora España (06:00 UTC)
+    - cron: '0 18 * * *'  # 19:00 hora España (18:00 UTC)
+  workflow_dispatch:
 
 jobs:
-  manual-deploy:
+  deploy-tst:
     runs-on: ubuntu-latest
-    name: Despliegue TST
-
+    env:
+      PGHOST: ${{ secrets.DB_HOST_TST }}
+      PGUSER: ${{ secrets.DB_USER_TST }}
+      PGPASSWORD: ${{ secrets.DB_PASS_TST }}
+      PGDATABASE: ${{ secrets.DB_NAME_TST }}
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
         with:
-          ref: tst   # Siempre toma el código de la rama tst
+          ref: tst
 
       - name: ⚙️ Instalar cliente PostgreSQL
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: 🚀 Compilar y validar funciones/procedimientos
-        env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+      - name: 🚀 Desplegar funciones/procedimientos
         run: |
           echo "🔄 Iniciando despliegue en la base de datos..."
-          BASE_DIR="tstsite_db/tstsite_exe"
+          if [ -z "$PGHOST" ] || [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ] || [ -z "$PGDATABASE" ]; then
+            echo "❌ Faltan variables de conexión."
+            exit 1
+          fi
 
+          BASE_DIR="tstsite_db/tstsite_exe"
           if [ ! -d "$BASE_DIR" ]; then
             echo "❌ El directorio $BASE_DIR no existe."
             exit 1
@@ -37,7 +41,6 @@ jobs:
 
           shopt -s nullglob
           FILES=($BASE_DIR/*.sql)
-
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "⚠️ No hay ficheros .sql en $BASE_DIR."
             exit 1
@@ -46,7 +49,7 @@ jobs:
           ERROR=0
           for file in "${FILES[@]}"; do
             echo "➡️ Compilando: $file"
-            if ! psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
+            if ! PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$file"; then
               echo "❌ Error al compilar $file"
               ERROR=1
               break
@@ -54,26 +57,18 @@ jobs:
           done
 
           if [ $ERROR -ne 0 ]; then
-            echo "🚨 Despliegue fallido. Revisa el log anterior."
+            echo "🚨 Despliegue fallido."
             exit 1
           fi
 
           echo "✅ Despliegue completado correctamente en TST."
 
-      - name: 🔁 Reiniciar conexiones activas tras el despliegue
-        env:
-          PGHOST: ${{ secrets.DB_HOST_TST }}
-          PGUSER: ${{ secrets.DB_USER_TST }}
-          PGPASSWORD: ${{ secrets.DB_PASS_TST }}
-          PGDATABASE: ${{ secrets.DB_NAME_TST }}
+      - name: 🔁 Reiniciar conexiones activas
         run: |
-          echo "🔁 Cerrando conexiones activas en la base de datos..."
+          echo "🔁 Cerrando conexiones activas..."
           RESULT=$(psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -t -c \
             "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();")
-          
-          echo "🔍 Se van a cerrar $RESULT conexiones activas (excepto la actual)."
-          
+          echo "🔍 Se van a cerrar $RESULT conexiones activas."
           psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();"
-          
           echo "✅ Conexiones cerradas correctamente."

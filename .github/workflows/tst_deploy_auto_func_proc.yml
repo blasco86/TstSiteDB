@@ -14,6 +14,7 @@ jobs:
       PGUSER: ${{ secrets.DB_USER_TST }}
       PGPASSWORD: ${{ secrets.DB_PASS_TST }}
       PGDATABASE: ${{ secrets.DB_NAME_TST }}
+
     steps:
       - name: 🧩 Descargar código de la rama tst
         uses: actions/checkout@v4
@@ -72,3 +73,33 @@ jobs:
           psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
             "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid();"
           echo "✅ Conexiones cerradas correctamente."
+
+      # 🆕 --- NUEVA ETAPA: VACUUM COMPLETO ---
+      - name: 🧹 Ejecutar VACUUM FULL (fuera de transacción)
+        run: |
+          echo "🧹 Iniciando VACUUM FULL en todas las tablas del esquema tstsite..."
+          psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" <<'SQL'
+          DO $$
+          DECLARE
+            r RECORD;
+          BEGIN
+            FOR r IN
+              SELECT table_schema, table_name
+              FROM information_schema.tables
+              WHERE table_schema = 'tstsite'
+                AND table_type = 'BASE TABLE'
+            LOOP
+              RAISE NOTICE '🧩 Ejecutando VACUUM FULL ANALYZE en %.%', r.table_schema, r.table_name;
+              EXECUTE format('VACUUM (FULL, ANALYZE) %I.%I;', r.table_schema, r.table_name);
+            END LOOP;
+          END$$;
+          SQL
+          echo "✅ VACUUM FULL completado correctamente."
+
+      # 🆕 --- NUEVA ETAPA: EJECUTAR PROCEDIMIENTO DE OPTIMIZACIÓN ---
+      - name: ⚙️ Ejecutar procedimiento de optimización
+        run: |
+          echo "⚙️ Ejecutando optimización general (ANALYZE, REINDEX, CLUSTER)..."
+          psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -c \
+            "CALL tstsite_exe.pr_optimizador(true, true, true, true);"
+          echo "✅ Optimización completada correctamente."

@@ -68,7 +68,7 @@ BEGIN
     RETURN jsonb_build_object(
         'resultado', 'ok',
         'mensaje', 'Login correcto',
-        'id_usuario', v_rec.id,
+        'idUsuario', v_rec.id,
         'usuario', p_usuario,
         'perfil', v_rec.perfil,
         'estado', v_rec.estado,

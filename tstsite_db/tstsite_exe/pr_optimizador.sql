@@ -1,4 +1,6 @@
 create or replace procedure tstsite_exe.pr_optimizador(IN p_analyze boolean DEFAULT true, IN p_reindex boolean DEFAULT true, IN p_cluster boolean DEFAULT true, IN p_terminate_conns boolean DEFAULT true)
+    security definer
+    SET search_path = tstsite, tstsite_exe, public
     language plpgsql
 as
 $$
@@ -83,3 +85,4 @@ comment on procedure tstsite_exe.pr_optimizador(boolean, boolean, boolean, boole
 alter procedure tstsite_exe.pr_optimizador(boolean, boolean, boolean, boolean) owner to tstsite;
 
 grant execute on procedure tstsite_exe.pr_optimizador(boolean, boolean, boolean, boolean) to tstsite_exe;
+
